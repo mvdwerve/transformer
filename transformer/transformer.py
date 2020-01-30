@@ -1,7 +1,7 @@
 import math
 
 import tensorflow as tf
-from tensorflow.keras.layers import Add, Dense, Dropout, Embedding, Layer, LayerNormalization, Multiply, Permute, Reshape  # pylint: disable=import-error
+from tensorflow.keras.layers import Add, Dense, Dropout, Layer, LayerNormalization, Multiply, Permute, Reshape  # pylint: disable=import-error
 
 
 def gelu(x, faster_approx=False):
@@ -26,8 +26,6 @@ class Transformer:
                  d_model,
                  num_heads,
                  d_ff,
-                 input_vocab_size,
-                 target_vocab_size,
                  dropout_rate,
                  ffn_activation=tf.keras.activations.relu,
                  scope="transformer"):
@@ -35,7 +33,6 @@ class Transformer:
                                d_model=d_model,
                                num_heads=num_heads,
                                d_ff=d_ff,
-                               vocab_size=input_vocab_size,
                                dropout_rate=dropout_rate,
                                ffn_activation=ffn_activation,
                                scope="%s/encoder" % scope)
@@ -44,12 +41,11 @@ class Transformer:
                                d_model=d_model,
                                num_heads=num_heads,
                                d_ff=d_ff,
-                               vocab_size=target_vocab_size,
                                dropout_rate=dropout_rate,
                                ffn_activation=ffn_activation,
                                scope="%s/decoder" % scope)
 
-        self.final_layer = Dense(target_vocab_size,
+        self.final_layer = Dense(1,
                                  activation=None,
                                  name="%s/dense" % scope)
 
@@ -77,7 +73,6 @@ class Decoder:
                  d_model,
                  num_heads,
                  d_ff,
-                 vocab_size,
                  dropout_rate,
                  ffn_activation=tf.keras.activations.relu,
                  scope="decoder"):
@@ -85,9 +80,6 @@ class Decoder:
         self.num_layers = num_layers
         self.scope = scope
 
-        self.embedding = Embedding(input_dim=vocab_size,
-                                   output_dim=d_model,
-                                   name="%s/embedding" % scope)
         self.pos_encoding = PositionalEncoding(d_model,
                                                name="%s/positional_encoding" %
                                                scope)
@@ -105,7 +97,6 @@ class Decoder:
         self.dropout = Dropout(dropout_rate, name="%s/dropout" % self.scope)
 
     def __call__(self, x, enc_output, lookahead_mask, padding_mask):
-        x = self.embedding(x)
         x = MultiplyConstant(self.d_model, name="%s/multiply" % self.scope)(x)
         x = Add(name="%s/add" % self.scope)([x, self.pos_encoding(x)])
 
@@ -128,7 +119,6 @@ class Encoder:
                  d_model,
                  num_heads,
                  d_ff,
-                 vocab_size,
                  dropout_rate,
                  ffn_activation=tf.keras.activations.relu,
                  scope="encoder"):
@@ -136,9 +126,6 @@ class Encoder:
         self.num_layers = num_layers
         self.scope = scope
 
-        self.embedding = Embedding(input_dim=vocab_size,
-                                   output_dim=d_model,
-                                   name="%s/embedding" % scope)
         self.pos_encoding = PositionalEncoding(d_model,
                                                name="%s/positional_encoding" %
                                                scope)
@@ -156,7 +143,6 @@ class Encoder:
         self.dropout = Dropout(dropout_rate, name="%s/dropout" % self.scope)
 
     def __call__(self, x, padding_mask):
-        x = self.embedding(x)
         x = MultiplyConstant(self.d_model, name="%s/multiply" % self.scope)(x)
         x = Add(name="%s/add" % self.scope)([x, self.pos_encoding(x)])
 
